@@ -7,70 +7,106 @@ import {
   useElements,
 } from "@stripe/react-stripe-js";
 
-// Read publishable key & backend base from Vite env
+/**
+ * Read Stripe publishable key from Vite env
+ * NOTE: never hardcode secret keys in client.
+ */
 const PUBLISHABLE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8787";
 
-// Initialize Stripe once
+
+const API_BASE = import.meta.env.VITE_API_BASE || "/api";
+
+/** Initialize Stripe once */
 const stripePromise = loadStripe(PUBLISHABLE_KEY);
 
-// Helper to format cents
-function dollars(cents) { return `$${(cents / 100).toFixed(2)}`; }
+/** Small helper to format dollars to cents safely */
+function toCents(aud) {
+  const n = Number(aud);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return Math.round(n * 100);
+}
 
-// Payment form component
 function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
-  const [priceCents] = useState(999);
-  const [loading, setLoading] = useState(false);
+
+  const [amount, setAmount] = useState("9.99"); // default plan price
+  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  const handlePay = async (e) => {
+  async function onPay(e) {
     e.preventDefault();
     setMsg("");
-    if (!stripe || !elements) return;
-    try {
-      setLoading(true);
 
-      // Create PaymentIntent on backend
+    if (!stripe || !elements) {
+      setMsg("Stripe not ready. Please try again.");
+      return;
+    }
+
+    const priceCents = toCents(amount);
+    if (!priceCents) {
+      setMsg("Please enter a valid amount.");
+      return;
+    }
+
+    try {
+      setBusy(true);
+
+      // Create PaymentIntent on server (Netlify will proxy /api to Render)
       const res = await fetch(`${API_BASE}/create-payment-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: priceCents, currency: "aud", plan: "premium" }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to create intent");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.clientSecret) {
+        throw new Error(data?.error || "Failed to create PaymentIntent");
+      }
 
-      // Confirm on client
+      // Confirm card payment on client
       const card = elements.getElement(CardElement);
       const confirm = await stripe.confirmCardPayment(data.clientSecret, {
         payment_method: { card },
       });
 
-      if (confirm.error) setMsg(`❌ ${confirm.error.message}`);
-      else if (confirm.paymentIntent?.status === "succeeded")
-        setMsg("✅ Payment succeeded! Premium unlocked (test mode).");
-      else setMsg("⚠️ Payment status: " + confirm.paymentIntent?.status);
+      if (confirm.error) {
+        setMsg(`❌ ${confirm.error.message}`);
+      } else if (confirm.paymentIntent?.status === "succeeded") {
+        setMsg("✅ Payment succeeded!");
+      } else {
+        setMsg(`ℹ️ Status: ${confirm.paymentIntent?.status || "unknown"}`);
+      }
     } catch (err) {
-      setMsg(`❌ ${err.message}`);
+      setMsg(`❌ ${err.message || "Payment failed"}`);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
-  };
+  }
 
   return (
-    <form className="card" onSubmit={handlePay}>
-      <h2>Premium Checkout</h2>
-      <p className="small">
-        This is a test integration. Use Stripe test card, e.g. <strong>4242 4242 4242 4242</strong>.
-      </p>
+    <form className="card" onSubmit={onPay} style={{ maxWidth: 520 }}>
+      <h2>Pay</h2>
+      <p className="small">Test cards accepted in Stripe test mode (e.g., 4242 4242 4242 4242).</p>
 
-      <div style={{ background: "transparent", padding: 12, borderRadius: 10, border: "1px solid var(--border)", marginBottom: 12 }}>
+      <label style={{ display: "block", margin: "12px 0 6px" }}>
+        Amount (AUD)
+      </label>
+      <input
+        className="input"
+        type="number"
+        step="0.01"
+        min="0"
+        value={amount}
+        onChange={(e) => setAmount(e.target.value)}
+        disabled={busy}
+      />
+
+      <div style={{ margin: "12px 0" }}>
         <CardElement options={{ hidePostalCode: true }} />
       </div>
 
-      <button className="btn" disabled={!stripe || loading}>
-        {loading ? "Processing..." : `Pay ${dollars(priceCents)} (Test)`}
+      <button className="btn" type="submit" disabled={busy || !stripe}>
+        {busy ? "Processing..." : "Pay now"}
       </button>
 
       {msg && <p style={{ marginTop: 12 }}>{msg}</p>}
