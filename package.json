@@ -1,0 +1,26 @@
+{
+  "name": "task9.2d",
+  "version": "1.0.0",
+  "description": "SIT313 Task 9.2D - DEV@Deakin Subscription + Post Feature",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm:dev:client\" \"npm:dev:server\"",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "build": "npm --prefix client run build",
+    "preview": "npm --prefix client run preview"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0",
+    "dotenv-cli": "^10.0.0",
+    "netlify-cli": "^23.5.1",
+    "nodemon": "^3.1.0"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "bcryptjs": "^3.0.2",
+    "firebase": "^12.2.1",
+    "react-hook-form": "^7.62.0",
+    "zod": "^4.1.8"
+  }
+}
