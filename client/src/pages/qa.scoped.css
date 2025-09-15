@@ -1,0 +1,61 @@
+/* Scoped QA styles */
+.qa-page { display: grid; gap: 14px; }
+
+.qa-header { text-align: center; }
+.qa-header h1 { margin: 0 0 6px; font-size: clamp(22px, 3vw, 34px); font-weight: 900; }
+.qa-header p { margin: 0; color: var(--muted); }
+
+.qa-filters {
+  display: grid;
+  grid-template-columns: 1fr 160px 160px 160px auto;
+  gap: 10px;
+}
+
+.qa-create .qa-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+.qa-create .qa-col-span { grid-column: 1 / -1; }
+
+.qa-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.qa-item__head { display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+.qa-title-wrap { display:flex; align-items:center; gap: 10px; }
+.qa-title { font-weight: 800; color: #7ab7ff; text-decoration: none; }
+.qa-tag { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+  background: #e8f0ff; color: #1e3a8a; border: 1px solid #d7e2ff; }
+html[data-theme="dark"] .qa-tag { background: #152036; color: #cbd5e1; border-color: #23314d; }
+.qa-actions { display:flex; gap:10px; }
+.qa-preview { display:grid; grid-template-columns: 160px 1fr; gap: 12px; margin-top: 10px; }
+.qa-thumb { width: 160px; height: 100px; object-fit: cover; border-radius: 10px; border: 1px solid var(--border); }
+.qa-desc { color: var(--text); }
+.qa-meta { color: var(--muted); margin-top: 6px; }
+
+@media (max-width: 860px) {
+  .qa-filters { grid-template-columns: 1fr 1fr; }
+  .qa-create .qa-grid { grid-template-columns: 1fr; }
+  .qa-preview { grid-template-columns: 1fr; }
+}
+/* Tabs */
+.qa-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  align-self: center;
+}
+.qa-tab {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-weight: 800;
+  cursor: pointer;
+}
+.qa-tab.active {
+  background: #1f2a44;
+  color: #fff;
+}
+html[data-theme="dark"] .qa-tab.active { background: #334155; }
+
+.qa-file { margin-left: 6px; align-self: end; }

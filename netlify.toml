@@ -1,0 +1,5 @@
+# netlify.toml
+[build]
+  command = "npm run build"        # your Vite build
+  publish = "dist"                 # Vite output folder
+  functions = "netlify/functions"  # where functions live

@@ -1,0 +1,318 @@
+/* src/index.css */
+
+/* ---------- Global Theme System (light/dark) ---------- */
+:root {
+  /* LIGHT THEME (defaults) */
+  --bg: #f3f4f6;
+  --panel: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --brand: #22c55e;
+  --border: #e5e7eb;
+
+  --neon-1: #22c55e;
+  --neon-2: #38bdf8;
+  --neon-3: #a78bfa;
+
+  --shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* DARK THEME OVERRIDES */
+html[data-theme="dark"] {
+  --bg: #0f172a;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --border: #1f2937;
+  --shadow: 0 10px 30px rgba(0,0,0,0.35);
+}
+
+/* ---------- Base Reset ---------- */
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+}
+
+/* Links */
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout container for page content */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* ---------- Sticky Navbar (visual shell) ---------- */
+.nav {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 14px 24px;
+  background: linear-gradient(to right, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+html[data-theme="dark"] .nav {
+  background: linear-gradient(to right, rgba(15,23,42,0.7), rgba(15,23,42,0.4));
+}
+
+/* Left part: logo + links */
+.nav-left { display: flex; align-items: center; gap: 18px; }
+.nav-links a { margin-right: 14px; font-weight: 600; }
+
+/* Theme toggle button */
+.theme-toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  cursor: pointer; box-shadow: var(--shadow);
+}
+
+/* Logo image */
+.logo {
+  height: 28px; width: auto; display: block;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.15));
+}
+
+/* ---------- Card with Neon Flowing Border ---------- */
+.card {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.card::before {
+  content: "";
+  position: absolute; inset: -2px;
+  background: linear-gradient(120deg, var(--neon-1), var(--neon-2), var(--neon-3), var(--neon-1));
+  background-size: 300% 300%;
+  z-index: 0;
+  border-radius: 16px;
+  animation: neonflow 8s linear infinite;
+  filter: blur(10px); opacity: 0.35;
+}
+.card > * { position: relative; z-index: 1; }
+@keyframes neonflow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Grid helper */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 10px 14px;
+  background: var(--brand);
+  color: #0a0f1e;
+  border: none; border-radius: 10px;
+  font-weight: 700; cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .2s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(34,197,94,0.35); }
+.btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Inputs */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  color: #111827;
+}
+html[data-theme="dark"] .input {
+  background: #0c1220; color: var(--text); border-color: #374151;
+}
+
+.small { color: var(--muted); font-size: 13px; }
+
+/* ---------- Fullscreen Carousel ---------- */
+.carousel {
+  position: relative;
+  width: 100vw; height: calc(100vh - 72px);
+  left: 50%; right: 50%; margin-left: -50vw; margin-right: -50vw;
+  overflow: hidden; border-radius: 16px;
+  box-shadow: var(--shadow);
+}
+.slide {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  opacity: 0; transition: opacity 800ms ease;
+}
+.slide.active { opacity: 1; }
+.carousel .overlay {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0);
+  color: #fff; text-align: center; padding: 24px;
+  transition: background 250ms ease, opacity 250ms ease;
+  opacity: 0;
+}
+.carousel:hover .overlay { background: rgba(0,0,0,0.35); opacity: 1; }
+.overlay h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 56px); }
+.overlay p { margin: 0; font-size: clamp(14px, 2vw, 20px); }
+html[data-theme="light"] .overlay { color: #f9fafb; }
+
+/* ---------- Carousel Dot Indicators ---------- */
+.dots {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  z-index: 2;
+}
+.dot {
+  width: 12px; height: 12px; padding: 0;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  background: transparent; outline: none; cursor: pointer;
+  transition: transform 0.15s ease, background 0.2s ease, border-color 0.2s ease;
+}
+.dot:hover, .dot:focus-visible { transform: scale(1.15); border-color: rgba(255,255,255,1); }
+.dot.active { background: rgba(255, 255, 255, 0.95); }
+
+/* —— Newsletter (navbar middle) —— */
+.nav-center { flex: 1; display: flex; justify-content: center; }
+.nav-newsletter {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: rgba(0,0,0,0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 6px 8px;
+}
+html[data-theme="dark"] .nav-newsletter { background: rgba(255,255,255,0.06); }
+.nav-newsletter-label { font-weight: 700; letter-spacing: .5px; }
+.nav-newsletter input {
+  width: 240px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; outline: none; background: var(--panel); color: var(--text);
+}
+.nav-newsletter input:focus { border-color: var(--brand); }
+.nav-newsletter button {
+  padding: 6px 10px; border-radius: 6px; border: 1px solid var(--border);
+  background: var(--brand); color: white; font-weight: 700; cursor: pointer;
+}
+.nav-newsletter button:disabled { opacity: .7; cursor: not-allowed; }
+.nav-newsletter-msg { margin-left: 10px; font-size: 12px; color: var(--muted); }
+
+/* Login button on the right */
+.btn-login {
+  display: inline-flex; align-items: center;
+  padding: 6px 12px; margin-right: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px; background: var(--panel); color: var(--text); font-weight: 700;
+}
+.btn-login:hover { transform: translateY(-1px); }
+
+/* ---------- Footer (real bottom, theme-aware) ---------- */
+/* Footer is NOT fixed. It sits at the bottom of the document flow. */
+.site-footer {
+  position: static;
+  width: 100%;
+  margin-top: auto;
+
+  /* match navbar look & follow theme automatically */
+  background: linear-gradient(to right, rgba(255,255,255,0.6), rgba(255,255,255,0.3));
+  color: var(--text);
+  border-top: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+
+  padding: 16px 24px 10px;
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 12px; border-top-left-radius: 16px; border-top-right-radius: 16px;
+}
+html[data-theme="dark"] .site-footer {
+  background: linear-gradient(to right, rgba(15,23,42,0.7), rgba(15,23,42,0.4));
+}
+.site-footer h4 { margin: 0 0 6px; font-size: 18px; }
+.site-footer a { display: block; color: var(--text); text-decoration: none; margin: 2px 0; opacity: .9; }
+.site-footer a:hover { opacity: 1; }
+.site-footer .socials { display: flex; gap: 8px; font-size: 20px; }
+.site-footer .footer-bottom {
+  grid-column: 1 / -1; margin-top: 6px; display: flex; justify-content: space-between; align-items: center;
+  border-top: 1px solid var(--border); padding-top: 6px;
+}
+.site-footer .links a { display: inline-block; margin: 0 10px; }
+
+/* ---------- Page shell for sticky-bottom layout ---------- */
+/* Make main area grow so footer naturally stays at the bottom. */
+.layout-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.layout-main { flex: 1 0 auto; }
+
+/* Remove the extra bottom padding used by the previously fixed footer. */
+.container { padding-bottom: 0; }
+.grid-span-2 { grid-column: 1 / -1; }
+/* Footer social icons: neat, theme-aware */
+.site-footer .socials { display:flex; gap:10px; }
+
+.site-footer .social-link {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:36px; height:36px; border-radius:12px;
+  background: var(--panel); border:1px solid var(--border);
+  box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .2s ease, color .2s ease;
+  color: #0f172a; /* icon color (light) */
+}
+html[data-theme="dark"] .site-footer .social-link { color: #e5e7eb; }
+
+.site-footer .social-link:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0,0,0,0.15);
+  color: var(--brand); /* nice brand highlight on hover */
+}
+
+.site-footer .social-link svg { width:18px; height:18px; fill: currentColor; }
+/* Legal pages: make long text comfy to read */
+.card h1 { font-size: clamp(24px, 3.2vw, 36px); font-weight: 900; }
+.card h3 { margin-top: 20px; font-size: 18px; }
+.card p, .card li { line-height: 1.7; }
+.card ul { padding-left: 1.2rem; margin: 6px 0 12px; }
+/* ===== Floating chat widget ===== */
+.chat-fab {
+  position: fixed; right: 20px; bottom: 20px; z-index: 50;
+}
+.chat-fab__btn {
+  background: var(--brand); color: #0a0f1e; font-weight: 800;
+  border: 1px solid var(--border); border-radius: 999px;
+  padding: 10px 14px; cursor: pointer; box-shadow: var(--shadow);
+}
+.chat-fab__panel {
+  position: absolute; right: 0; bottom: 54px; width: min(92vw, 380px);
+  display: grid; grid-template-rows: auto 1fr auto; gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 12px; background: var(--panel);
+}
+.chat-fab__header { display:flex; align-items:center; justify-content:space-between; }
+.chat-fab__history {
+  overflow: auto; max-height: 52vh; padding: 4px 2px; display: grid; gap: 8px;
+}
+.chat-bubble {
+  max-width: 85%; padding: 10px 12px; border-radius: 12px;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  background: var(--panel);
+}
+.chat-bubble.user {
+  justify-self: end; background: var(--brand); color: #0a0f1e;
+}
+.chat-bubble.ai { justify-self: start; }
+.chat-fab__input { display:flex; gap: 8px; align-items: flex-end; }
+.chat-fab__input .input { flex: 1; }

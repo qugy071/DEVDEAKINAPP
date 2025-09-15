@@ -1,0 +1,6 @@
+# env & secrets
+.env
+.env.*
+server/.env
+*.pem
+*.key
