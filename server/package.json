@@ -3,8 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "index.js",
+  "engines": { "node": ">=18" },
   "scripts": {
-    "dev": "nodemon index.js"
+    "start": "node index.js",          
+    "dev": "nodemon index.js",          
+    "render-build": "echo \"no build\"" 
   },
   "dependencies": {
     "cors": "^2.8.5",
