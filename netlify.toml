@@ -1,5 +1,16 @@
-# netlify.toml
 [build]
-  command = "npm run build"        # your Vite build
-  publish = "dist"                 # Vite output folder
-  functions = "netlify/functions"  # where functions live
+  command = "npm run build"      
+  publish = "client/dist"        
+  [build.environment]
+    NODE_VERSION = "18.20.3"     
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://<your-render-domain>/:splat"
+  status = 200
+  force = true
