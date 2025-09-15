@@ -10,27 +10,55 @@ import rateLimit from "express-rate-limit";
 
 const app = express();
 
-/* ---------------- Common Middlewares ---------------- */
-// Allow dev origins; tighten for production
-app.use(cors({ origin: true }));
-// Parse JSON bodies
-app.use(express.json());
+/* ----------------------------------------------------
+ * Trust proxy (Render/Netlify sit behind a proxy)
+ * Enables correct client IP for rate limiting, etc.
+ * ---------------------------------------------------- */
+app.set("trust proxy", 1);
 
-/* ---------------- Stripe (existing) ---------------- */
+/* ----------------------------------------------------
+ * CORS with allow-list (set in env: ALLOWED_ORIGINS)
+ * Example:
+ *   ALLOWED_ORIGINS=https://your-site.netlify.app,http://localhost:5173
+ * If not provided, we allow all origins (easier for local dev).
+ * ---------------------------------------------------- */
+const allowList = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map(s => s.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin(origin, cb) {
+    // Allow requests without an Origin header (health checks, curl, etc.)
+    if (!origin) return cb(null, true);
+    if (allowList.length === 0 || allowList.includes(origin)) return cb(null, true);
+    cb(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // handle preflight for all routes
+app.use(express.json());             // parse JSON bodies
+
+/* ----------------------------------------------------
+ * Stripe (payments)
+ * ---------------------------------------------------- */
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
 });
 
-/* ---------------- OpenAI (NEW) ---------------- */
+/* ----------------------------------------------------
+ * OpenAI (chatbot)
+ * ---------------------------------------------------- */
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-// Choose model via env; default to cheapest
 const MODEL = process.env.OPENAI_MODEL || "gpt-5-nano";
 
-// Some low-cost models lock temperature to 1 (no tuning)
+// Some low-cost models have fixed temperature (==1). Do not set temperature for them.
 const FIXED_TEMP_MODELS = new Set(["gpt-5-nano"]);
 const canTuneTemp = (m) => !FIXED_TEMP_MODELS.has(m);
 
-// Simple per-IP rate limit for AI endpoints
+// Simple per-IP rate limiter for AI endpoints
 const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
@@ -38,20 +66,28 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-/* ---------------- Health Check ---------------- */
+/* ----------------------------------------------------
+ * Health checks
+ * ---------------------------------------------------- */
 app.get("/", (_req, res) => {
-  res.json({ ok: true, service: "Task9.2D server", time: new Date().toISOString() });
+  res.json({ ok: true, service: "DEV@Deakin server", time: new Date().toISOString() });
 });
 
-/* ---------------- Payments (existing) ---------------- */
-/**
- * Create PaymentIntent (Stripe)
- * - Keep as-is for your Pay page
- */
-app.post("/create-payment-intent", async (req, res) => {
+// Provide both to survive rewrites/proxies
+app.get(["/health", "/api/health"], (_req, res) => {
+  res.json({ ok: true, service: "DEV@Deakin server", time: new Date().toISOString() });
+});
+
+/* ----------------------------------------------------
+ * Payments: create PaymentIntent
+ * Keep backward compatibility for old path.
+ * New path: /api/create-payment-intent
+ * ---------------------------------------------------- */
+async function handleCreatePaymentIntent(req, res) {
   try {
     const { amount, currency = "aud", plan = "premium" } = req.body;
 
+    // Server-side allow-list to avoid arbitrary amounts from the client
     const allowlist = { premium: 999, pro: 1999 };
     const finalAmount = Number.isFinite(amount) ? amount : allowlist[plan];
     if (!finalAmount || finalAmount <= 0) {
@@ -71,44 +107,50 @@ app.post("/create-payment-intent", async (req, res) => {
     console.error("[Stripe Error]", err);
     res.status(500).json({ error: err.message || "Internal Server Error" });
   }
-});
+}
+app.post("/create-payment-intent", handleCreatePaymentIntent);   // legacy
+app.post("/api/create-payment-intent", handleCreatePaymentIntent);
 
-/* ---------------- Resend helper (shared) ---------------- */
-/**
- * sendResendEmail - tiny helper for Resend REST API
- * NOTE: Use FROM_EMAIL like 'DEV@Deakin <onboarding@resend.dev>' for testing.
- */
+/* ----------------------------------------------------
+ * Resend helper (send emails via REST).
+ * Use a verified sender for production.
+ * For testing you can use: FROM_EMAIL="DEV@Deakin <onboarding@resend.dev>"
+ * ---------------------------------------------------- */
 async function sendResendEmail(payload) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("Missing RESEND_API_KEY");
 
+  // Node 18+ has global fetch
   const resp = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
-  const bodyText = await resp.text();
-  let bodyJson = null;
-  try { bodyJson = JSON.parse(bodyText); } catch { /* ignore parse error */ }
+  const text = await resp.text();
+  let json = null;
+  try { json = JSON.parse(text); } catch { /* ignore parse error */ }
 
   if (!resp.ok) {
-    const reason = bodyJson?.error?.message || bodyText || `HTTP ${resp.status}`;
+    const reason = json?.error?.message || text || `HTTP ${resp.status}`;
     throw new Error(reason);
   }
-  return { id: bodyJson?.id, body: bodyJson ?? bodyText };
+  return { id: json?.id, body: json ?? text };
 }
 
-/* ---------------- Newsletter (existing) ---------------- */
+/* ----------------------------------------------------
+ * Newsletter subscribe
+ * ---------------------------------------------------- */
 app.post("/api/subscribe", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim();
     const source = String(req.body?.source || "navbar");
+
     if (!/^\S+@\S+\.\S+$/.test(email)) {
       return res.status(400).json({ error: "Invalid email" });
     }
 
-    const from = process.env.FROM_EMAIL; // e.g. 'DEV@Deakin <onboarding@resend.dev>'
+    const from = process.env.FROM_EMAIL; // e.g., 'DEV@Deakin <onboarding@resend.dev>'
     if (!from) return res.status(500).json({ error: "Missing FROM_EMAIL" });
 
     const { id } = await sendResendEmail({
@@ -126,14 +168,16 @@ app.post("/api/subscribe", async (req, res) => {
     });
 
     console.log("[Subscribe] Resend message id:", id);
-    return res.json({ ok: true, messageId: id });
+    res.json({ ok: true, messageId: id });
   } catch (e) {
     console.error("[Subscribe Error]", e);
-    return res.status(502).json({ error: e.message || "Email API failed" });
+    res.status(502).json({ error: e.message || "Email API failed" });
   }
 });
 
-/* ---------------- Contact → email (existing) ---------------- */
+/* ----------------------------------------------------
+ * Contact form -> forward to your inbox via Resend
+ * ---------------------------------------------------- */
 app.post("/api/contact", async (req, res) => {
   try {
     const { name = "", email = "", subject = "", message = "" } = req.body || {};
@@ -145,9 +189,8 @@ app.post("/api/contact", async (req, res) => {
       return res.status(400).json({ error: "Invalid email" });
     }
 
-    // Use a valid sender; for tests: FROM_EMAIL="DEV@Deakin <onboarding@resend.dev>"
-    const from = process.env.FROM_EMAIL;
-    const to   = process.env.CONTACT_TO_EMAIL || process.env.FALLBACK_TO_EMAIL || from;
+    const from = process.env.FROM_EMAIL; // verified sender
+    const to = process.env.CONTACT_TO_EMAIL || process.env.FALLBACK_TO_EMAIL || from;
     if (!from || !to) {
       return res.status(500).json({ error: "Missing FROM_EMAIL or CONTACT_TO_EMAIL" });
     }
@@ -180,12 +223,10 @@ app.post("/api/contact", async (req, res) => {
   }
 });
 
-/* ---------------- AI: non-streaming (UPDATED) ---------------- */
-/**
- * POST /api/ai/chat
- * - One-shot response (no streaming)
- * - body: { messages: [{ role:"user"|"assistant"|"system", content:string }, ...] }
- */
+/* ----------------------------------------------------
+ * AI: non-streaming chat
+ * body: { messages: [{ role:"user"|"assistant"|"system", content:string }, ...] }
+ * ---------------------------------------------------- */
 app.post("/api/ai/chat", aiLimiter, async (req, res) => {
   try {
     const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
@@ -196,7 +237,6 @@ app.post("/api/ai/chat", aiLimiter, async (req, res) => {
         "Be concise, use markdown when helpful, and avoid private data.",
     };
 
-    // Only set temperature when the model supports it
     const params = { model: MODEL, messages: [system, ...messages] };
     if (canTuneTemp(MODEL)) params.temperature = 0.6;
 
@@ -209,12 +249,10 @@ app.post("/api/ai/chat", aiLimiter, async (req, res) => {
   }
 });
 
-/* ---------------- AI: streaming (UPDATED) ---------------- */
-/**
- * POST /api/ai/chat-stream
- * - Streams tokens (chunked text) to the client
- * - body: { messages: [...] }
- */
+/* ----------------------------------------------------
+ * AI: streaming chat (Server-Sent style text chunks)
+ * body: { messages: [...] }
+ * ---------------------------------------------------- */
 app.post("/api/ai/chat-stream", aiLimiter, async (req, res) => {
   try {
     const incoming = Array.isArray(req.body?.messages) ? req.body.messages : [];
@@ -228,7 +266,7 @@ app.post("/api/ai/chat-stream", aiLimiter, async (req, res) => {
       ...incoming,
     ];
 
-    // Prepare chunked response for streaming text
+    // Prepare chunked response
     res.writeHead(200, {
       "Content-Type": "text/plain; charset=utf-8",
       "Transfer-Encoding": "chunked",
@@ -236,7 +274,6 @@ app.post("/api/ai/chat-stream", aiLimiter, async (req, res) => {
       Connection: "keep-alive",
     });
 
-    // Only set temperature when the model supports it
     const params = { model: MODEL, messages: base, stream: true };
     if (canTuneTemp(MODEL)) params.temperature = 0.6;
 
@@ -253,7 +290,9 @@ app.post("/api/ai/chat-stream", aiLimiter, async (req, res) => {
   }
 });
 
-/* ---------------- Listen ---------------- */
+/* ----------------------------------------------------
+ * Start server
+ * ---------------------------------------------------- */
 const PORT = process.env.PORT || 8787;
 app.listen(PORT, () => {
   console.log(`> Server running on http://localhost:${PORT}`);
