@@ -18,7 +18,7 @@
 [[redirects]]
  
   from = "/api/*"
-  to   = "https://devdeakinapp.onrender.com/api/:splat"
+  to   = "https://devdeakinapp.onrender.com/:splat"
   status = 200
   force  = true
 
