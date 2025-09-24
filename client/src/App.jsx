@@ -20,7 +20,7 @@ import Privacy from "./pages/Privacy.jsx";
 import Terms from "./pages/Terms.jsx";
 import CodeOfConduct from "./pages/CodeOfConduct.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
-
+import Signup from "./pages/Signup.jsx";
 /**
  * App renders navbar, routes and footer.
  * Footer sits at the real page bottom (non-fixed).
@@ -86,6 +86,7 @@ export default function App() {
             <Route path="/qa/:id" element={<QADetail />} />
               <Route path="/tutorials" element={<Tutorials />} /> 
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/faqs" element={<FAQs />} />
               <Route path="/help" element={<Help />} />
               <Route path="/contact" element={<Contact />} />
